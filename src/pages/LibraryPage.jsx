@@ -7,16 +7,24 @@ import { Spinner } from '../components/ui/Spinner';
 import HTMLFlipBook from 'react-pageflip';
 import { CommentsPanel } from '../components/CommentsPanel';
 
+// Ultra-Smooth Hardware-Accelerated Page Component
 const Page = forwardRef(({ children, isCover }, ref) => {
   return (
     <div 
       ref={ref} 
       data-density={isCover ? "hard" : "soft"} 
-      className="bg-[#fdfbf7] h-full w-full overflow-hidden select-none"
+      className="bg-[#fdfbf7] h-full w-full overflow-hidden select-none shadow-sm"
+      style={{
+        WebkitBackfaceVisibility: 'hidden',
+        backfaceVisibility: 'hidden',
+        transformStyle: 'preserve-3d',
+        willChange: 'transform',
+      }}
     >
       <div className="h-full w-full relative flex items-center justify-center overflow-hidden">
+        {/* Natural Curved Spine Lighting Shadow */}
         {!isCover && (
-          <div className="absolute top-0 bottom-0 left-0 w-3 md:w-4 bg-gradient-to-r from-black/10 to-transparent pointer-events-none z-20" />
+          <div className="absolute top-0 bottom-0 left-0 w-5 bg-gradient-to-r from-black/20 via-black/5 to-transparent pointer-events-none z-20 transition-opacity duration-300" />
         )}
         <div className="w-full h-full flex items-center justify-center p-0 m-0 z-10">
           {typeof children === 'string' && (children.startsWith('http') || children.startsWith('data:image')) ? (
@@ -24,9 +32,13 @@ const Page = forwardRef(({ children, isCover }, ref) => {
               src={children} 
               alt="PDF Page" 
               className="w-full h-full object-fill pointer-events-none mx-auto my-auto" 
+              style={{
+                WebkitUserSelect: 'none',
+                userSelect: 'none',
+              }}
             />
           ) : (
-            <div className="w-full h-full p-3 prose max-w-none text-gray-800 font-serif leading-relaxed text-xs md:text-sm overflow-y-auto">
+            <div className="w-full h-full p-3 md:p-5 prose max-w-none text-gray-800 font-serif leading-relaxed text-xs md:text-sm overflow-y-auto">
               {children}
             </div>
           )}
@@ -48,7 +60,6 @@ export default function LibraryPage() {
   const readerRef = useRef(null);
   const containerRef = useRef(null);
   
-  // Dynamic Max-Fit Book Dimensions
   const [bookDimensions, setBookDimensions] = useState({
     width: 350,
     height: 500,
@@ -61,7 +72,6 @@ export default function LibraryPage() {
     fetchBooks();
   }, [fetchBooks]);
 
-  // Handle Fullscreen Event Listeners
   useEffect(() => {
     const handleFullscreenChange = () => {
       const isFull = !!(document.fullscreenElement || document.webkitFullscreenElement);
@@ -76,7 +86,7 @@ export default function LibraryPage() {
     };
   }, []);
 
-  // Responsive Maximization Algorithm (Fills 95%+ of Container)
+  // Smooth Max-Fit Container Resizing
   useEffect(() => {
     const updateDimensions = () => {
       if (!containerRef.current) return;
@@ -85,17 +95,15 @@ export default function LibraryPage() {
       const screenWidth = window.innerWidth;
       const isMobile = screenWidth < 768;
 
-      // Minimal padding to maximize usable reader canvas
       const padX = isMobile ? 8 : 16;
       const padY = isMobile ? 8 : 16;
       const maxAvailableWidth = Math.max(clientWidth - padX, 200);
       const maxAvailableHeight = Math.max(clientHeight - padY, 250);
 
-      const pageAspectRatio = 1.414; // Standard PDF aspect ratio (Height / Width)
+      const pageAspectRatio = 1.414;
       let singlePageWidth, singlePageHeight;
 
       if (isMobile) {
-        // Single Page Mode for Mobile Devices
         singlePageHeight = maxAvailableHeight;
         singlePageWidth = singlePageHeight / pageAspectRatio;
 
@@ -104,11 +112,9 @@ export default function LibraryPage() {
           singlePageHeight = singlePageWidth * pageAspectRatio;
         }
       } else {
-        // Two-Page Spread Mode for Laptop / Desktop / Fullscreen
         singlePageHeight = maxAvailableHeight;
         singlePageWidth = singlePageHeight / pageAspectRatio;
 
-        // Check if 2-page spread exceeds container width
         if (singlePageWidth * 2 > maxAvailableWidth) {
           singlePageWidth = maxAvailableWidth / 2;
           singlePageHeight = singlePageWidth * pageAspectRatio;
@@ -281,12 +287,10 @@ export default function LibraryPage() {
             className={`flex flex-col relative min-h-[350px] md:min-h-0 rounded-xl overflow-hidden shadow-sm border transition-all
               ${isFullscreen ? 'bg-zinc-950 h-screen w-screen z-50 fixed inset-0 border-zinc-800' : 'bg-[#eaeadf] border-gray-200 w-full h-full'}`}
           >
-            {/* Fullscreen Mouse Trigger Zone */}
             {isFullscreen && (
               <div className="absolute top-0 left-0 right-0 h-14 z-[55] peer" />
             )}
 
-            {/* Top Bar */}
             <div className={`flex justify-between items-center w-full px-4 py-2 shrink-0 transition-all duration-300 ease-in-out ${
               isFullscreen 
                 ? 'absolute top-0 left-0 right-0 z-[60] bg-zinc-900/95 border-b border-zinc-800 text-white shadow-xl -translate-y-full opacity-0 pointer-events-none peer-hover:translate-y-0 peer-hover:opacity-100 peer-hover:pointer-events-auto hover:translate-y-0 hover:opacity-100 hover:pointer-events-auto' 
@@ -317,8 +321,12 @@ export default function LibraryPage() {
               </button>
             </div>
 
-            {/* FULLY RESPONSIVE EDGE-TO-EDGE CANVAS */}
-            <div ref={containerRef} className="flex-1 relative w-full h-full min-h-0 flex items-center justify-center p-1 md:p-2 overflow-hidden">
+            {/* SMOOTH 60FPS FLIPBOOK ENGINE */}
+            <div 
+              ref={containerRef} 
+              className="flex-1 relative w-full h-full min-h-0 flex items-center justify-center p-1 md:p-2 overflow-hidden"
+              style={{ perspective: '2000px' }}
+            >
               <HTMLFlipBook 
                 key={`${selectedBook.id}-${isFullscreen}-${bookDimensions.isMobile}-${bookDimensions.width}-${bookDimensions.height}`} 
                 width={bookDimensions.width} 
@@ -328,11 +336,15 @@ export default function LibraryPage() {
                 maxWidth={2500} 
                 minHeight={150} 
                 maxHeight={2500} 
-                maxShadowOpacity={0.35} 
+                maxShadowOpacity={0.45} 
                 drawShadow={true}
                 usePortrait={bookDimensions.isMobile}
-                flippingTime={700}
+                flippingTime={650} 
                 showCover={true} 
+                useMouseEvents={true}
+                clickEventForward={true}
+                swipeDistance={25}
+                showPageCorners={true}
                 mobileScrollSupport={true} 
                 className="shadow-[0_20px_50px_-10px_rgba(0,0,0,0.5)] mx-auto my-auto"
                 style={{ margin: 'auto' }}

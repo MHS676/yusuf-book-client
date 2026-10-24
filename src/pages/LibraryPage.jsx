@@ -2,28 +2,71 @@ import React, { useMemo, useEffect, useState, useRef, forwardRef } from 'react';
 import { useBookStore } from '../store/useBookStore';
 import { useDebounce } from '../hooks/useDebounce';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
-import { Search, Maximize, Minimize, BookOpen, Filter } from 'lucide-react';
+import { Search, Maximize, Minimize, BookOpen, MousePointerClick, Filter } from 'lucide-react';
 import { Spinner } from '../components/ui/Spinner';
 import HTMLFlipBook from 'react-pageflip';
 import { CommentsPanel } from '../components/CommentsPanel';
 
-const Page = forwardRef(({ children, number }, ref) => {
-  const isPageImage = typeof children === 'string' && children.startsWith('data:image/');
-
+const BookCover = forwardRef(({ book, children, isBack }, ref) => {
   return (
-    <div ref={ref} data-density="soft" className={`${isPageImage ? 'bg-transparent' : 'bg-[#fffdf8]'} h-full w-full`}>
-      <div className={`h-full w-full px-6 py-8 md:px-8 md:py-10 lg:px-12 lg:py-14 flex flex-col justify-between relative ${isPageImage ? '' : 'shadow-[inset_0_0_30px_rgba(0,0,0,0.03)] border-x border-black/5'} overflow-y-auto`}>
-        {!isPageImage && <div className="absolute top-0 bottom-0 left-0 w-6 bg-gradient-to-r from-black/10 to-transparent pointer-events-none z-0" />}
-        {isPageImage ? (
-          <div className="flex-1 min-h-0 w-full flex items-center justify-center overflow-hidden relative z-10">
-            <img src={children} alt={`Page ${number}`} className="max-h-full max-w-full object-contain mix-blend-multiply" />
-          </div>
-        ) : (
-          <div className="prose max-w-none text-gray-800 font-serif leading-relaxed text-xs md:text-sm lg:text-base z-10">
-            {children}
+    <div ref={ref} data-density="hard" className="shadow-[0_0_20px_rgba(0,0,0,0.4)] h-full w-full bg-white">
+      <div 
+        className="w-full h-full flex flex-col items-center justify-center text-white text-center relative overflow-hidden"
+        style={{ backgroundColor: book.cover }}
+      >
+        <div className={`absolute top-0 bottom-0 w-16 pointer-events-none z-0 bg-gradient-to-r ${isBack ? 'from-transparent via-black/20 to-black/50 right-0' : 'from-black/50 via-black/20 to-transparent left-0'}`} />
+        <div className={`absolute top-0 bottom-0.5 w-3 pointer-events-none z-0 bg-black/20 shadow-inner ${isBack ? 'right-12' : 'left-12'}`} />
+        
+        <div className="absolute inset-4 border border-white/10 p-4 flex flex-col items-center justify-center z-10">
+           {children}
+        </div>
+
+        {!isBack && (
+          <div className="absolute bottom-6 flex items-center gap-1.5 text-white/70 text-[10px] font-sans tracking-widest animate-pulse">
+            <MousePointerClick size={12} /> CLICK TO OPEN
           </div>
         )}
-        {number && <div className="text-center text-[10px] text-gray-400 mt-auto pt-3 font-sans z-10 border-t border-gray-200 w-1/3 mx-auto shrink-0">- {number} -</div>}
+      </div>
+    </div>
+  );
+});
+BookCover.displayName = 'BookCover';
+
+const InnerCover = forwardRef(({ book, isBack }, ref) => {
+  return (
+    <div ref={ref} data-density="hard" className="h-full w-full bg-white">
+      <div 
+        className="w-full h-full relative shadow-[inset_0_0_100px_rgba(0,0,0,0.8)]"
+        style={{ backgroundColor: book.cover }}
+      >
+        <div className="absolute inset-0 bg-black/60" />
+        <div className={`absolute top-0 bottom-0 w-16 pointer-events-none bg-gradient-to-r ${isBack ? 'from-black/80 to-transparent left-0' : 'from-transparent to-black/80 right-0'}`} />
+      </div>
+    </div>
+  );
+});
+InnerCover.displayName = 'InnerCover';
+
+/* 
+  OPTIMIZED PAGE COMPONENT:
+  - Removed inner padding so PDF pages stretch edge-to-edge
+  - Removed double border/margin gaps at the spine
+*/
+const Page = forwardRef(({ children }, ref) => {
+  return (
+    <div ref={ref} data-density="soft" className="bg-white h-full w-full overflow-hidden">
+      <div className="h-full w-full relative flex items-center justify-center overflow-hidden">
+        {/* Shadow gradient along the center spine */}
+        <div className="absolute top-0 bottom-0 left-0 w-5 bg-gradient-to-r from-black/15 to-transparent pointer-events-none z-20" />
+        <div className="w-full h-full flex items-center justify-center p-0 m-0 z-10">
+          {typeof children === 'string' && (children.startsWith('http') || children.startsWith('data:image')) ? (
+            <img src={children} alt="PDF Page" className="w-full h-full object-fill pointer-events-none" />
+          ) : (
+            <div className="w-full h-full p-4 prose max-w-none text-gray-800 font-serif leading-relaxed text-xs md:text-sm lg:text-base overflow-y-auto">
+              {children}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -56,12 +99,10 @@ export default function LibraryPage() {
 
   const toggleFullscreen = async () => {
     try {
-      if (document.fullscreenElement === readerRef.current) {
-        await document.exitFullscreen();
-      } else if (!document.fullscreenElement && readerRef.current?.requestFullscreen) {
-        await readerRef.current.requestFullscreen();
+      if (!document.fullscreenElement) {
+        await readerRef.current?.requestFullscreen();
       } else {
-        setIsFullscreen(false);
+        await document.exitFullscreen();
       }
     } catch (err) {
       console.error("Fullscreen error:", err);
@@ -95,9 +136,23 @@ export default function LibraryPage() {
     return <div className="text-center py-20 text-gray-500">No books found in the library.</div>;
   }
 
-  const flipbookChildren = selectedBook ? selectedBook.pages.map((content, idx) => (
-      <Page key={`page-${idx}`} number={idx + 1}>{content}</Page>
-    )) : [];
+  const flipbookChildren = selectedBook ? [
+    <BookCover key="cover-front" book={selectedBook} isBack={false}>
+      <h2 className="text-xl md:text-2xl lg:text-3xl mb-2 leading-tight font-serif drop-shadow-lg px-2">{selectedBook.title}</h2>
+      <p className="text-xs md:text-sm opacity-90 drop-shadow-md italic tracking-wide">{selectedBook.author}</p>
+      <span className="mt-3 text-[8px] md:text-[9px] uppercase tracking-widest bg-white/20 px-2.5 py-1 rounded-full">{selectedBook.category} • {selectedBook.subCategory}</span>
+    </BookCover>,
+    <InnerCover key="inner-front" book={selectedBook} isBack={false} />,
+    ...selectedBook.pages.map((content, idx) => (
+      <Page key={`page-${idx}`}>{content}</Page>
+    )),
+    ...(selectedBook.pages.length % 2 !== 0 ? [<Page key="blank" />] : []),
+    <InnerCover key="inner-back" book={selectedBook} isBack={true} />,
+    <BookCover key="cover-back" book={selectedBook} isBack={true}>
+      <h3 className="text-lg md:text-xl mb-2 font-serif">The End</h3>
+      <p className="text-[10px] md:text-xs opacity-80">Close the book to return to shelf.</p>
+    </BookCover>
+  ] : [];
 
   return (
     <div className="w-full h-full flex flex-col flex-1 animate-in fade-in duration-500 min-h-0">
@@ -140,13 +195,8 @@ export default function LibraryPage() {
         </div>
       )}
 
-      {/* 
-        WIREFRAME LAYOUT STRUCTURE
-        Left Column | Center Column | Right Column 
-      */}
       <div className={`gap-4 overflow-hidden ${!isFullscreen ? 'flex flex-col lg:grid lg:grid-cols-[250px_minmax(0,1fr)_300px] xl:grid-cols-[270px_minmax(0,1fr)_340px] flex-1 min-h-0' : 'flex-1 min-h-0'}`}>
         
-        {/* LEFT COLUMN: Bookshelf */}
         {!isFullscreen && (
           <aside className="bg-white flex flex-col border border-gray-200 rounded-xl overflow-hidden z-10 shadow-sm h-full min-h-0">
             <div className="p-4 pb-3 shrink-0 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
@@ -186,18 +236,17 @@ export default function LibraryPage() {
           </aside>
         )}
 
-        {/* CENTER COLUMN: Reading Area */}
         {selectedBook ? (
           <section 
             ref={readerRef}
-            className={`group flex flex-col relative min-h-0 rounded-xl overflow-hidden shadow-sm border
+            className={`flex flex-col relative min-h-0 rounded-xl overflow-hidden shadow-sm border
               ${isFullscreen ? 'bg-zinc-900 h-screen w-screen z-50 fixed inset-0 border-zinc-800' : 'bg-[#e5e5e0] border-gray-200 w-full h-full'}`}
           >
-            {/* Invisible trigger area for the hover effect in fullscreen */}
-            {/* Center Top Bar */}
-            <div className={`flex justify-between items-center w-full px-5 py-3 shrink-0 border-b z-[70] transition-opacity duration-200 ${
+            {isFullscreen && <div className="absolute top-0 left-0 right-0 h-16 z-[60] peer" />}
+
+            <div className={`flex justify-between items-center w-full px-5 py-3 shrink-0 border-b z-50 transition-all duration-300 ease-in-out ${
               isFullscreen 
-                ? 'absolute top-0 left-0 right-0 bg-zinc-900/95 border-zinc-800 opacity-0 group-hover:opacity-100 focus-within:opacity-100' 
+                ? 'absolute top-0 left-0 right-0 bg-zinc-900/95 border-zinc-800 -translate-y-full opacity-0 peer-hover:translate-y-0 peer-hover:opacity-100 hover:translate-y-0 hover:opacity-100' 
                 : 'relative bg-[#f4f4f0] border-gray-300'
             }`}>
               <div className="min-w-0 pr-4">
@@ -218,22 +267,19 @@ export default function LibraryPage() {
               </button>
             </div>
 
-            {/* 
-              STRICT WIREFRAME BOOK CONTAINER:
-              Using 'absolute inset-x' bounds the flipbook purely to this exact safe area.
-            */}
+            {/* EXPANDED FLIPBOOK CANVAS AREA */}
             <div className="flex-1 relative w-full h-full min-h-0">
-              <div className={`absolute flex items-center justify-center ${isFullscreen ? 'inset-8 md:inset-16' : 'inset-4 md:inset-8'}`}>
+              <div className={`absolute flex items-center justify-center ${isFullscreen ? 'inset-4 md:inset-8' : 'inset-2 md:inset-4'}`}>
                 <HTMLFlipBook 
                   key={`${selectedBook.id}-${isFullscreen}`} 
-                  width={400} 
-                  height={580} 
+                  width={isFullscreen ? 520 : 420} 
+                  height={isFullscreen ? 720 : 580} 
                   size="stretch" 
                   minWidth={200} 
-                  maxWidth={2000} /* Letting the absolute bounds enforce the real limits */
+                  maxWidth={2400} 
                   minHeight={250} 
-                  maxHeight={2000} 
-                  maxShadowOpacity={0.5} 
+                  maxHeight={2400} 
+                  maxShadowOpacity={0.4} 
                   drawShadow={true}
                   usePortrait={false}
                   flippingTime={800}
@@ -251,7 +297,6 @@ export default function LibraryPage() {
           <div className="flex items-center justify-center p-10 bg-white border border-gray-200 rounded-xl text-gray-500">Select a book to start reading.</div>
         )}
 
-        {/* RIGHT COLUMN: Comments */}
         {!isFullscreen && selectedBook && (
           <aside className="bg-white flex flex-col border border-gray-200 rounded-xl overflow-hidden z-10 shadow-sm h-full min-h-0">
             <CommentsPanel bookId={selectedBook.id} />

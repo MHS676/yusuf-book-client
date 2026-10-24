@@ -7,7 +7,7 @@ import { Spinner } from '../components/ui/Spinner';
 import HTMLFlipBook from 'react-pageflip';
 import { CommentsPanel } from '../components/CommentsPanel';
 
-// Synthesize a realistic paper rustle sound using Web Audio API
+// Web Audio API Paper Swish Sound Generator
 const playPageTurnSound = (audioCtxRef) => {
   try {
     if (!audioCtxRef.current) {
@@ -18,7 +18,7 @@ const playPageTurnSound = (audioCtxRef) => {
       ctx.resume();
     }
 
-    const bufferSize = ctx.sampleRate * 0.12; // 120ms paper swish
+    const bufferSize = ctx.sampleRate * 0.12;
     const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
     const data = buffer.getChannelData(0);
 
@@ -36,7 +36,7 @@ const playPageTurnSound = (audioCtxRef) => {
     filter.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.12);
 
     const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.setValueAtTime(0.18, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.12);
 
     noise.connect(filter);
@@ -45,11 +45,11 @@ const playPageTurnSound = (audioCtxRef) => {
 
     noise.start();
   } catch (err) {
-    // Audio context fallback
+    // Audio fallback
   }
 };
 
-// Tactile Hardware-Accelerated Page
+// StPageFlip Compatible Page Ref Wrapper
 const Page = forwardRef(({ children, isCover }, ref) => {
   return (
     <div 
@@ -64,14 +64,15 @@ const Page = forwardRef(({ children, isCover }, ref) => {
       }}
     >
       <div className="h-full w-full relative flex items-center justify-center overflow-hidden">
-        {/* Visual Grab Corner Peel Cues */}
-        <div className="absolute top-0 right-0 w-8 h-8 pointer-events-none bg-gradient-to-bl from-black/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity z-30" />
-        <div className="absolute bottom-0 right-0 w-8 h-8 pointer-events-none bg-gradient-to-tl from-black/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity z-30" />
+        {/* Interactive Corner Curl Cue */}
+        <div className="absolute top-0 right-0 w-8 h-8 pointer-events-none bg-gradient-to-bl from-black/15 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity z-30" />
+        <div className="absolute bottom-0 right-0 w-8 h-8 pointer-events-none bg-gradient-to-tl from-black/15 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity z-30" />
 
-        {/* Realistic Spine Light Shadow */}
+        {/* Center Spine Lighting Shadow */}
         {!isCover && (
           <div className="absolute top-0 bottom-0 left-0 w-5 bg-gradient-to-r from-black/25 via-black/10 to-transparent pointer-events-none z-20" />
         )}
+
         <div className="w-full h-full flex items-center justify-center p-0 m-0 z-10">
           {typeof children === 'string' && (children.startsWith('http') || children.startsWith('data:image')) ? (
             <img 
@@ -130,7 +131,7 @@ export default function LibraryPage() {
     };
   }, []);
 
-  // Responsive Max-Fit Dimensions
+  // Calculate StPageFlip Optimal Canvas Aspect Ratio
   useEffect(() => {
     const updateDimensions = () => {
       if (!containerRef.current) return;
@@ -144,7 +145,7 @@ export default function LibraryPage() {
       const maxAvailableWidth = Math.max(clientWidth - padX, 200);
       const maxAvailableHeight = Math.max(clientHeight - padY, 250);
 
-      const pageAspectRatio = 1.414;
+      const pageAspectRatio = 1.414; // Standard A4 ratio
       let singlePageWidth, singlePageHeight;
 
       if (isMobile) {
@@ -341,7 +342,7 @@ export default function LibraryPage() {
               <div className="absolute top-0 left-0 right-0 h-14 z-[55] peer" />
             )}
 
-            {/* Top Bar with Audio Control */}
+            {/* Top Bar */}
             <div className={`flex justify-between items-center w-full px-4 py-2 shrink-0 transition-all duration-300 ease-in-out ${
               isFullscreen 
                 ? 'absolute top-0 left-0 right-0 z-[60] bg-zinc-900/95 border-b border-zinc-800 text-white shadow-xl -translate-y-full opacity-0 pointer-events-none peer-hover:translate-y-0 peer-hover:opacity-100 peer-hover:pointer-events-auto hover:translate-y-0 hover:opacity-100 hover:pointer-events-auto' 
@@ -386,7 +387,7 @@ export default function LibraryPage() {
               </div>
             </div>
 
-            {/* REALISTIC 3D HAND-FLIP CANVAS */}
+            {/* STPAGEFLIP ENGINE CANVAS */}
             <div 
               ref={containerRef} 
               className="flex-1 relative w-full h-full min-h-0 flex items-center justify-center p-1 md:p-2 overflow-hidden"
@@ -401,7 +402,7 @@ export default function LibraryPage() {
                 maxWidth={2500} 
                 minHeight={150} 
                 maxHeight={2500} 
-                maxShadowOpacity={0.65} 
+                maxShadowOpacity={0.7} 
                 drawShadow={true}
                 usePortrait={bookDimensions.isMobile}
                 flippingTime={700} 

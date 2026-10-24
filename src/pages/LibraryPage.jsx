@@ -23,10 +23,10 @@ const Page = forwardRef(({ children, isCover }, ref) => {
             <img 
               src={children} 
               alt="PDF Page" 
-              className="max-w-full max-h-full object-contain pointer-events-none mx-auto my-auto" 
+              className="w-full h-full object-fill pointer-events-none mx-auto my-auto" 
             />
           ) : (
-            <div className="w-full h-full p-2.5 md:p-4 prose max-w-none text-gray-800 font-serif leading-relaxed text-xs md:text-sm overflow-y-auto">
+            <div className="w-full h-full p-3 prose max-w-none text-gray-800 font-serif leading-relaxed text-xs md:text-sm overflow-y-auto">
               {children}
             </div>
           )}
@@ -48,10 +48,10 @@ export default function LibraryPage() {
   const readerRef = useRef(null);
   const containerRef = useRef(null);
   
-  // Dynamic Responsive Book Dimensions State
+  // Dynamic Max-Fit Book Dimensions
   const [bookDimensions, setBookDimensions] = useState({
-    width: 280,
-    height: 400,
+    width: 350,
+    height: 500,
     isMobile: false
   });
   
@@ -76,47 +76,48 @@ export default function LibraryPage() {
     };
   }, []);
 
-  // Resize Observer for Fluid Device & Screen Responsiveness
+  // Responsive Maximization Algorithm (Fills 95%+ of Container)
   useEffect(() => {
     const updateDimensions = () => {
       if (!containerRef.current) return;
+      
       const { clientWidth, clientHeight } = containerRef.current;
       const screenWidth = window.innerWidth;
       const isMobile = screenWidth < 768;
 
-      // Calculate available space inside container
-      const paddingX = isMobile ? 12 : 24;
-      const paddingY = isMobile ? 12 : 24;
-      const availWidth = Math.max(clientWidth - paddingX, 200);
-      const availHeight = Math.max(clientHeight - paddingY, 250);
+      // Minimal padding to maximize usable reader canvas
+      const padX = isMobile ? 8 : 16;
+      const padY = isMobile ? 8 : 16;
+      const maxAvailableWidth = Math.max(clientWidth - padX, 200);
+      const maxAvailableHeight = Math.max(clientHeight - padY, 250);
 
-      const pageAspectRatio = 1.38; // Standard book page ratio (Height / Width)
-      let calcWidth, calcHeight;
+      const pageAspectRatio = 1.414; // Standard PDF aspect ratio (Height / Width)
+      let singlePageWidth, singlePageHeight;
 
       if (isMobile) {
-        // Single page mode for Mobile phones (< 768px)
-        calcWidth = Math.min(availWidth, 380);
-        calcHeight = calcWidth * pageAspectRatio;
+        // Single Page Mode for Mobile Devices
+        singlePageHeight = maxAvailableHeight;
+        singlePageWidth = singlePageHeight / pageAspectRatio;
 
-        if (calcHeight > availHeight) {
-          calcHeight = availHeight;
-          calcWidth = calcHeight / pageAspectRatio;
+        if (singlePageWidth > maxAvailableWidth) {
+          singlePageWidth = maxAvailableWidth;
+          singlePageHeight = singlePageWidth * pageAspectRatio;
         }
       } else {
-        // Two page spread mode for Tablets & Desktops (>= 768px)
-        const maxSpreadWidth = availWidth;
-        calcWidth = Math.min(maxSpreadWidth / 2, 480);
-        calcHeight = calcWidth * pageAspectRatio;
+        // Two-Page Spread Mode for Laptop / Desktop / Fullscreen
+        singlePageHeight = maxAvailableHeight;
+        singlePageWidth = singlePageHeight / pageAspectRatio;
 
-        if (calcHeight > availHeight) {
-          calcHeight = availHeight;
-          calcWidth = calcHeight / pageAspectRatio;
+        // Check if 2-page spread exceeds container width
+        if (singlePageWidth * 2 > maxAvailableWidth) {
+          singlePageWidth = maxAvailableWidth / 2;
+          singlePageHeight = singlePageWidth * pageAspectRatio;
         }
       }
 
       setBookDimensions({
-        width: Math.max(Math.floor(calcWidth), 160),
-        height: Math.max(Math.floor(calcHeight), 220),
+        width: Math.max(Math.floor(singlePageWidth), 150),
+        height: Math.max(Math.floor(singlePageHeight), 210),
         isMobile
       });
     };
@@ -278,14 +279,14 @@ export default function LibraryPage() {
           <section 
             ref={readerRef}
             className={`flex flex-col relative min-h-[350px] md:min-h-0 rounded-xl overflow-hidden shadow-sm border transition-all
-              ${isFullscreen ? 'bg-zinc-900 h-screen w-screen z-50 fixed inset-0 border-zinc-800' : 'bg-[#eaeadf] border-gray-200 w-full h-full'}`}
+              ${isFullscreen ? 'bg-zinc-950 h-screen w-screen z-50 fixed inset-0 border-zinc-800' : 'bg-[#eaeadf] border-gray-200 w-full h-full'}`}
           >
-            {/* Fullscreen Mouse Trigger Zone at top edge */}
+            {/* Fullscreen Mouse Trigger Zone */}
             {isFullscreen && (
               <div className="absolute top-0 left-0 right-0 h-14 z-[55] peer" />
             )}
 
-            {/* Reader Top Bar */}
+            {/* Top Bar */}
             <div className={`flex justify-between items-center w-full px-4 py-2 shrink-0 transition-all duration-300 ease-in-out ${
               isFullscreen 
                 ? 'absolute top-0 left-0 right-0 z-[60] bg-zinc-900/95 border-b border-zinc-800 text-white shadow-xl -translate-y-full opacity-0 pointer-events-none peer-hover:translate-y-0 peer-hover:opacity-100 peer-hover:pointer-events-auto hover:translate-y-0 hover:opacity-100 hover:pointer-events-auto' 
@@ -316,24 +317,24 @@ export default function LibraryPage() {
               </button>
             </div>
 
-            {/* DYNAMIC FLIPBOOK CANVAS CONTAINER */}
-            <div ref={containerRef} className="flex-1 relative w-full h-full min-h-0 flex items-center justify-center p-2 md:p-4 overflow-hidden">
+            {/* FULLY RESPONSIVE EDGE-TO-EDGE CANVAS */}
+            <div ref={containerRef} className="flex-1 relative w-full h-full min-h-0 flex items-center justify-center p-1 md:p-2 overflow-hidden">
               <HTMLFlipBook 
                 key={`${selectedBook.id}-${isFullscreen}-${bookDimensions.isMobile}-${bookDimensions.width}-${bookDimensions.height}`} 
                 width={bookDimensions.width} 
                 height={bookDimensions.height} 
                 size="fixed"
-                minWidth={140} 
-                maxWidth={1200} 
-                minHeight={200} 
-                maxHeight={1400} 
+                minWidth={100} 
+                maxWidth={2500} 
+                minHeight={150} 
+                maxHeight={2500} 
                 maxShadowOpacity={0.35} 
                 drawShadow={true}
                 usePortrait={bookDimensions.isMobile}
                 flippingTime={700}
                 showCover={true} 
                 mobileScrollSupport={true} 
-                className="shadow-[0_12px_28px_-8px_rgba(0,0,0,0.35)] mx-auto my-auto"
+                className="shadow-[0_20px_50px_-10px_rgba(0,0,0,0.5)] mx-auto my-auto"
                 style={{ margin: 'auto' }}
               >
                 {flipbookChildren}

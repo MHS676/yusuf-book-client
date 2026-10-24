@@ -8,13 +8,15 @@ import HTMLFlipBook from 'react-pageflip';
 import { CommentsPanel } from '../components/CommentsPanel';
 
 const Page = forwardRef(({ children, number }, ref) => {
+  const isPageImage = typeof children === 'string' && children.startsWith('data:image/');
+
   return (
-    <div ref={ref} data-density="soft" className="bg-[#fffdf8] h-full w-full">
-      <div className="h-full w-full px-6 py-8 md:px-8 md:py-10 lg:px-12 lg:py-14 flex flex-col justify-between relative shadow-[inset_0_0_30px_rgba(0,0,0,0.03)] border-x border-black/5 overflow-y-auto">
-        <div className="absolute top-0 bottom-0 left-0 w-6 bg-gradient-to-r from-black/10 to-transparent pointer-events-none z-0" />
-        {typeof children === 'string' && children.startsWith('data:image/') ? (
+    <div ref={ref} data-density="soft" className={`${isPageImage ? 'bg-transparent' : 'bg-[#fffdf8]'} h-full w-full`}>
+      <div className={`h-full w-full px-6 py-8 md:px-8 md:py-10 lg:px-12 lg:py-14 flex flex-col justify-between relative ${isPageImage ? '' : 'shadow-[inset_0_0_30px_rgba(0,0,0,0.03)] border-x border-black/5'} overflow-y-auto`}>
+        {!isPageImage && <div className="absolute top-0 bottom-0 left-0 w-6 bg-gradient-to-r from-black/10 to-transparent pointer-events-none z-0" />}
+        {isPageImage ? (
           <div className="flex-1 min-h-0 w-full flex items-center justify-center overflow-hidden relative z-10">
-            <img src={children} alt={`Page ${number}`} className="max-h-full max-w-full object-contain" />
+            <img src={children} alt={`Page ${number}`} className="max-h-full max-w-full object-contain mix-blend-multiply" />
           </div>
         ) : (
           <div className="prose max-w-none text-gray-800 font-serif leading-relaxed text-xs md:text-sm lg:text-base z-10">
@@ -188,14 +190,14 @@ export default function LibraryPage() {
         {selectedBook ? (
           <section 
             ref={readerRef}
-            className={`flex flex-col relative min-h-0 rounded-xl overflow-hidden shadow-sm border
+            className={`group flex flex-col relative min-h-0 rounded-xl overflow-hidden shadow-sm border
               ${isFullscreen ? 'bg-zinc-900 h-screen w-screen z-50 fixed inset-0 border-zinc-800' : 'bg-[#e5e5e0] border-gray-200 w-full h-full'}`}
           >
             {/* Invisible trigger area for the hover effect in fullscreen */}
             {/* Center Top Bar */}
-            <div className={`flex justify-between items-center w-full px-5 py-3 shrink-0 border-b z-[70] ${
+            <div className={`flex justify-between items-center w-full px-5 py-3 shrink-0 border-b z-[70] transition-opacity duration-200 ${
               isFullscreen 
-                ? 'absolute top-0 left-0 right-0 bg-zinc-900/95 border-zinc-800' 
+                ? 'absolute top-0 left-0 right-0 bg-zinc-900/95 border-zinc-800 opacity-0 group-hover:opacity-100 focus-within:opacity-100' 
                 : 'relative bg-[#f4f4f0] border-gray-300'
             }`}>
               <div className="min-w-0 pr-4">
@@ -235,7 +237,7 @@ export default function LibraryPage() {
                   drawShadow={true}
                   usePortrait={false}
                   flippingTime={800}
-                  showCover={false} 
+                  showCover={true} 
                   mobileScrollSupport={true} 
                   className="shadow-[0_20px_50px_-15px_rgba(0,0,0,0.4)]"
                   style={{ margin: '0 auto' }}

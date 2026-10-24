@@ -2,18 +2,60 @@ import React, { useMemo, useEffect, useState, useRef, forwardRef } from 'react';
 import { useBookStore } from '../store/useBookStore';
 import { useDebounce } from '../hooks/useDebounce';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
-import { Search, Maximize, Minimize, BookOpen, Filter } from 'lucide-react';
+import { Search, Maximize, Minimize, BookOpen, Filter, Volume2, VolumeX } from 'lucide-react';
 import { Spinner } from '../components/ui/Spinner';
 import HTMLFlipBook from 'react-pageflip';
 import { CommentsPanel } from '../components/CommentsPanel';
 
-// Ultra-Smooth Hardware-Accelerated Page Component
+// Synthesize a realistic paper rustle sound using Web Audio API
+const playPageTurnSound = (audioCtxRef) => {
+  try {
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    const ctx = audioCtxRef.current;
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
+
+    const bufferSize = ctx.sampleRate * 0.12; // 120ms paper swish
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(1200, ctx.currentTime);
+    filter.Q.setValueAtTime(3, ctx.currentTime);
+    filter.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.12);
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.12);
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+
+    noise.start();
+  } catch (err) {
+    // Audio context fallback
+  }
+};
+
+// Tactile Hardware-Accelerated Page
 const Page = forwardRef(({ children, isCover }, ref) => {
   return (
     <div 
       ref={ref} 
       data-density={isCover ? "hard" : "soft"} 
-      className="bg-[#fdfbf7] h-full w-full overflow-hidden select-none shadow-sm"
+      className="bg-[#fdfbf7] h-full w-full overflow-hidden select-none cursor-grab active:cursor-grabbing group shadow-md"
       style={{
         WebkitBackfaceVisibility: 'hidden',
         backfaceVisibility: 'hidden',
@@ -22,9 +64,13 @@ const Page = forwardRef(({ children, isCover }, ref) => {
       }}
     >
       <div className="h-full w-full relative flex items-center justify-center overflow-hidden">
-        {/* Natural Curved Spine Lighting Shadow */}
+        {/* Visual Grab Corner Peel Cues */}
+        <div className="absolute top-0 right-0 w-8 h-8 pointer-events-none bg-gradient-to-bl from-black/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity z-30" />
+        <div className="absolute bottom-0 right-0 w-8 h-8 pointer-events-none bg-gradient-to-tl from-black/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity z-30" />
+
+        {/* Realistic Spine Light Shadow */}
         {!isCover && (
-          <div className="absolute top-0 bottom-0 left-0 w-5 bg-gradient-to-r from-black/20 via-black/5 to-transparent pointer-events-none z-20 transition-opacity duration-300" />
+          <div className="absolute top-0 bottom-0 left-0 w-5 bg-gradient-to-r from-black/25 via-black/10 to-transparent pointer-events-none z-20" />
         )}
         <div className="w-full h-full flex items-center justify-center p-0 m-0 z-10">
           {typeof children === 'string' && (children.startsWith('http') || children.startsWith('data:image')) ? (
@@ -32,10 +78,6 @@ const Page = forwardRef(({ children, isCover }, ref) => {
               src={children} 
               alt="PDF Page" 
               className="w-full h-full object-fill pointer-events-none mx-auto my-auto" 
-              style={{
-                WebkitUserSelect: 'none',
-                userSelect: 'none',
-              }}
             />
           ) : (
             <div className="w-full h-full p-3 md:p-5 prose max-w-none text-gray-800 font-serif leading-relaxed text-xs md:text-sm overflow-y-auto">
@@ -56,9 +98,11 @@ export default function LibraryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
   
   const readerRef = useRef(null);
   const containerRef = useRef(null);
+  const audioCtxRef = useRef(null);
   
   const [bookDimensions, setBookDimensions] = useState({
     width: 350,
@@ -86,7 +130,7 @@ export default function LibraryPage() {
     };
   }, []);
 
-  // Smooth Max-Fit Container Resizing
+  // Responsive Max-Fit Dimensions
   useEffect(() => {
     const updateDimensions = () => {
       if (!containerRef.current) return;
@@ -160,6 +204,12 @@ export default function LibraryPage() {
       }
     } catch (err) {
       console.error("Fullscreen toggle error:", err);
+    }
+  };
+
+  const handlePageFlip = () => {
+    if (soundEnabled) {
+      playPageTurnSound(audioCtxRef);
     }
   };
 
@@ -291,6 +341,7 @@ export default function LibraryPage() {
               <div className="absolute top-0 left-0 right-0 h-14 z-[55] peer" />
             )}
 
+            {/* Top Bar with Audio Control */}
             <div className={`flex justify-between items-center w-full px-4 py-2 shrink-0 transition-all duration-300 ease-in-out ${
               isFullscreen 
                 ? 'absolute top-0 left-0 right-0 z-[60] bg-zinc-900/95 border-b border-zinc-800 text-white shadow-xl -translate-y-full opacity-0 pointer-events-none peer-hover:translate-y-0 peer-hover:opacity-100 peer-hover:pointer-events-auto hover:translate-y-0 hover:opacity-100 hover:pointer-events-auto' 
@@ -305,27 +356,41 @@ export default function LibraryPage() {
                 </strong>
               </div>
               
-              <button 
-                onClick={toggleFullscreen}
-                className={`p-1.5 rounded-lg transition-colors flex items-center gap-1 text-xs font-medium shrink-0 shadow-sm ${
-                  isFullscreen 
-                    ? 'hover:bg-zinc-700 text-zinc-200 bg-zinc-800 border border-zinc-700' 
-                    : 'hover:bg-white text-gray-700 bg-white border border-gray-200'
-                }`}
-              >
-                {isFullscreen ? (
-                  <><Minimize size={13} /> <span className="hidden sm:inline">Exit Fullscreen</span></>
-                ) : (
-                  <><Maximize size={13} /> <span className="hidden sm:inline">Fullscreen</span></>
-                )}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setSoundEnabled(!soundEnabled)}
+                  className={`p-1.5 rounded-lg border text-xs font-medium transition-colors shadow-xs ${
+                    soundEnabled 
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                      : 'bg-white text-gray-400 border-gray-200'
+                  }`}
+                  title={soundEnabled ? 'Mute Page Sound' : 'Enable Page Sound'}
+                >
+                  {soundEnabled ? <Volume2 size={13} /> : <VolumeX size={13} />}
+                </button>
+
+                <button 
+                  onClick={toggleFullscreen}
+                  className={`p-1.5 rounded-lg transition-colors flex items-center gap-1 text-xs font-medium shrink-0 shadow-sm ${
+                    isFullscreen 
+                      ? 'hover:bg-zinc-700 text-zinc-200 bg-zinc-800 border border-zinc-700' 
+                      : 'hover:bg-white text-gray-700 bg-white border border-gray-200'
+                  }`}
+                >
+                  {isFullscreen ? (
+                    <><Minimize size={13} /> <span className="hidden sm:inline">Exit Fullscreen</span></>
+                  ) : (
+                    <><Maximize size={13} /> <span className="hidden sm:inline">Fullscreen</span></>
+                  )}
+                </button>
+              </div>
             </div>
 
-            {/* SMOOTH 60FPS FLIPBOOK ENGINE */}
+            {/* REALISTIC 3D HAND-FLIP CANVAS */}
             <div 
               ref={containerRef} 
               className="flex-1 relative w-full h-full min-h-0 flex items-center justify-center p-1 md:p-2 overflow-hidden"
-              style={{ perspective: '2000px' }}
+              style={{ perspective: '2500px' }}
             >
               <HTMLFlipBook 
                 key={`${selectedBook.id}-${isFullscreen}-${bookDimensions.isMobile}-${bookDimensions.width}-${bookDimensions.height}`} 
@@ -336,17 +401,18 @@ export default function LibraryPage() {
                 maxWidth={2500} 
                 minHeight={150} 
                 maxHeight={2500} 
-                maxShadowOpacity={0.45} 
+                maxShadowOpacity={0.65} 
                 drawShadow={true}
                 usePortrait={bookDimensions.isMobile}
-                flippingTime={650} 
+                flippingTime={700} 
                 showCover={true} 
                 useMouseEvents={true}
                 clickEventForward={true}
-                swipeDistance={25}
+                swipeDistance={15}
                 showPageCorners={true}
                 mobileScrollSupport={true} 
-                className="shadow-[0_20px_50px_-10px_rgba(0,0,0,0.5)] mx-auto my-auto"
+                onFlip={handlePageFlip}
+                className="shadow-[0_25px_60px_-10px_rgba(0,0,0,0.6)] mx-auto my-auto"
                 style={{ margin: 'auto' }}
               >
                 {flipbookChildren}

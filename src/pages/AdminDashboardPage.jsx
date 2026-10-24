@@ -18,7 +18,8 @@ export default function AdminDashboardPage() {
   // Book Upload State
   const [title, setTitle] = useState('');
   const [author, setAuthor] = useState('');
-  const [cover, setCover] = useState('#1e3a8a');
+  const [category, setCategory] = useState('Ordinary Level');
+  const [subCategory, setSubCategory] = useState('');
   const [pagesInput, setPagesInput] = useState('');
   const [pdfPages, setPdfPages] = useState([]);
   const [fileName, setFileName] = useState('');
@@ -123,7 +124,9 @@ export default function AdminDashboardPage() {
     const newBook = {
       title,
       author,
-      cover,
+      category,
+      subCategory: subCategory.trim() || 'General',
+      cover: '#1e3a8a',
       pages: pagesArray.length > 0 ? pagesArray : [pagesInput]
     };
 
@@ -132,6 +135,8 @@ export default function AdminDashboardPage() {
       addToast(`Successfully published "${title}" to the Digital Library!`);
       setTitle('');
       setAuthor('');
+      setCategory('Ordinary Level');
+      setSubCategory('');
       setPagesInput('');
       setPdfPages([]);
       setFileName('');
@@ -237,7 +242,7 @@ export default function AdminDashboardPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Author / Publisher</label>
                   <input 
@@ -249,28 +254,18 @@ export default function AdminDashboardPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Cover Theme Color</label>
-                  <div className="flex items-center gap-3">
-                    <input 
-                      type="color" 
-                      value={cover} 
-                      onChange={(e) => setCover(e.target.value)}
-                      className="w-10 h-10 rounded-lg cursor-pointer border-0 bg-transparent"
-                    />
-                    <span className="text-xs font-mono text-gray-500">{cover}</span>
-                  </div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Category</label>
+                  <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent">
+                    <option value="Ordinary Level">Ordinary Level</option>
+                    <option value="Advanced Level">Advanced Level</option>
+                    <option value="Blog">Blog</option>
+                  </select>
                 </div>
               </div>
 
-              <div className="flex-1 flex flex-col">
-                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Parsed Page Contents (Separated by <code className="text-red-600">---</code>)</label>
-                <textarea 
-                  rows={6}
-                  placeholder={pdfPages.length ? `${pdfPages.length} PDF pages are ready as reader images. Publish the book to save them.` : 'Page contents will appear here automatically when you upload a text document...'}
-                  value={pagesInput}
-                  onChange={(e) => { setPagesInput(e.target.value); setPdfPages([]); }}
-                  className="w-full flex-1 p-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-accent resize-none"
-                />
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Subcategory</label>
+                <input type="text" placeholder="e.g., Accounting, ICT, General" value={subCategory} onChange={(e) => setSubCategory(e.target.value)} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent" />
               </div>
 
               <button type="submit" className="w-full py-3 bg-brand-primary text-white font-bold text-sm rounded-xl hover:bg-brand-primaryHover transition-all shadow-md flex items-center justify-center gap-2 mt-4">

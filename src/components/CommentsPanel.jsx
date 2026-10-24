@@ -34,7 +34,11 @@ export function CommentsPanel({ bookId }) {
       const response = await axios.get(`${COMMENTS_URL}/book/${encodeURIComponent(bookId)}`);
       setComments(response.data);
     } catch (err) {
-      setError('Could not load comments. Please try again.');
+      console.error('Failed to load reader comments:', err);
+      setComments([]);
+      setError(axios.isAxiosError(err) && !err.response
+        ? 'The comments service is unavailable. Check that the backend is running, then retry.'
+        : 'Comments could not be loaded. Please retry.');
     } finally {
       setIsLoading(false);
     }
@@ -79,14 +83,21 @@ export function CommentsPanel({ bookId }) {
       <div className="px-6 py-5 border-b border-gray-100 bg-white flex items-center gap-3 shrink-0 shadow-[0_4px_20px_-15px_rgba(0,0,0,0.1)] z-10">
         <div className="w-8 h-8 rounded-full bg-brand-accent/10 flex items-center justify-center text-brand-accentDark"><MessageSquare size={16} /></div>
         <h3 className="font-bold text-sm text-brand-dark tracking-wide">Reader Discussions</h3>
-        <span className="ml-auto text-xs font-bold bg-brand-primary text-white px-2.5 py-1 rounded-full">{comments.length}</span>
+        <span className="ml-auto text-xs font-bold bg-brand-primary text-white px-2.5 py-1 rounded-full">
+          {comments.reduce((total, comment) => total + 1 + (comment.replies?.length || 0), 0)}
+        </span>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-8 bg-[#faf9f5]">
-        {error && <p role="alert" className="text-xs text-rose-700 bg-rose-50 rounded-lg p-3">{error}</p>}
+        {error && (
+          <div role="alert" className="text-xs text-rose-700 bg-rose-50 rounded-lg p-3 flex items-center justify-between gap-3">
+            <span>{error}</span>
+            <button type="button" onClick={loadComments} className="shrink-0 font-bold underline underline-offset-2 hover:text-rose-900">Retry</button>
+          </div>
+        )}
         {isLoading ? (
           <p className="text-center text-xs text-gray-500">Loading comments…</p>
-        ) : comments.length === 0 ? (
+        ) : !error && comments.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center opacity-60">
             <BookOpen size={32} className="text-gray-400 mb-3" />
             <h4 className="text-sm font-bold text-brand-dark mb-1">No comments yet</h4>
